@@ -16,10 +16,6 @@ import GHC.Generics (Generic)
 import User (createUser, handleLogin, handleRegister)
 import Web.Scotty
 
-data Color = Color {peter :: String, jonas :: Int} deriving (Generic)
-
-instance ToJSON Color
-
 createTables :: Connection -> IO ()
 createTables db = do
   execute_ db "CREATE TABLE IF NOT EXISTS sessions (token VARCHAR(40) PRIMARY KEY, userId INTEGER NOT NULL, timestamp INTEGER NOT NULL);"
@@ -41,5 +37,3 @@ main = do
   scotty (port config) $ do
     post "/register" $ handleRegister db
     post "/login" $ handleLogin db
-    get "/" $ do
-      json Color {peter = "peter", jonas = 3}
