@@ -26,6 +26,9 @@ dependencies:
 - password
 - text
 - http-types
+- bytestring
+- uuid
+- unix-time
 
 ghc-options:
 - -Wall

@@ -13,11 +13,9 @@ author:         Author name here
 maintainer:     example@example.com
 copyright:      2023 Author name here
 license:        BSD3
-license-file:   LICENSE
 build-type:     Simple
 extra-source-files:
     README.md
-    CHANGELOG.md
 
 source-repository head
   type: git
@@ -33,9 +31,12 @@ executable recipe-server
   build-depends:
       aeson
     , base >=4.7 && <5
+    , bytestring
     , http-types
     , password
     , scotty
     , sqlite-simple
     , text
+    , unix-time
+    , uuid
   default-language: Haskell2010
