@@ -15,7 +15,7 @@ import Database.SQLite.Simple (Connection, execute_, open)
 import GHC.Generics (Generic)
 import Ingredients (createIngredientsTables, handleCreateIngredient, handleGetIngredient, handleGetIngredients)
 import User (createUser, handleLogin, handleRegister)
-import Web.Scotty
+import Web.Scotty (scotty, post, get)
 
 createTables :: Connection -> IO ()
 createTables db = do
