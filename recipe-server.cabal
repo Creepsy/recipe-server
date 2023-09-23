@@ -24,6 +24,7 @@ source-repository head
 executable recipe-server
   main-is: Main.hs
   other-modules:
+      Ingredients
       User
       Util
       Paths_recipe_server
