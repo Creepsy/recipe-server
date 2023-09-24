@@ -1,5 +1,5 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Recipe
   ( createRecipeTable,
@@ -10,9 +10,6 @@ module Recipe
     handleGetAllRecipes,
     handleGetRecipe,
     handleAddRecipe,
-    getAllRecipes,
-    getRecipe,
-    addRecipe,
   )
 where
 

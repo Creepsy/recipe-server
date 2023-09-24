@@ -17,10 +17,6 @@ import Recipe (createRecipeTable, handleAddRecipe, handleGetAllRecipes, handleGe
 import User (createUser, handleLogin, handleRegister)
 import Web.Scotty (get, post, scotty)
 
-data Color = Color {peter :: String, jonas :: Int} deriving (Generic)
-
-instance ToJSON Color
-
 createTables :: Connection -> IO ()
 createTables db = do
   execute_ db "CREATE TABLE IF NOT EXISTS sessions (token VARCHAR(40) PRIMARY KEY, userId INTEGER NOT NULL, timestamp INTEGER NOT NULL);"
