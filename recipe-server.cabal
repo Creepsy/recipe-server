@@ -25,6 +25,7 @@ executable recipe-server
   main-is: Main.hs
   other-modules:
       Ingredients
+      Recipe
       User
       Util
       Paths_recipe_server

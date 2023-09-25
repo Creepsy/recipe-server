@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ImportQualifiedPost #-}
 
 module Main (main) where
 
@@ -10,18 +9,20 @@ import Data.Aeson (decode)
 import Data.Aeson.Types
 import Data.ByteString.Lazy qualified as B
 import Data.Maybe
-import Data.Text
-import Database.SQLite.Simple (Connection, execute_, open)
+import Data.Text hiding (map)
+import Database.SQLite.Simple
 import GHC.Generics (Generic)
 import Ingredients (createIngredientsTables, handleCreateIngredient, handleGetIngredient, handleGetIngredients)
+import Recipe (createRecipeTable, handleAddRecipe, handleGetAllRecipes, handleGetRecipe)
 import User (createUser, handleLogin, handleRegister)
-import Web.Scotty
+import Web.Scotty (get, post, scotty)
 
 createTables :: Connection -> IO ()
 createTables db = do
   execute_ db "CREATE TABLE IF NOT EXISTS sessions (token VARCHAR(40) PRIMARY KEY, userId INTEGER NOT NULL, timestamp INTEGER NOT NULL);"
   execute_ db "CREATE TABLE IF NOT EXISTS users (userId INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR(255) NOT NULL, passwordHash VARCHAR(80) NOT NULL);"
   createIngredientsTables db
+  createRecipeTable db
 
 data ServerConfig = ServerConfig {port :: Int, adminPassword :: Text} deriving (Generic)
 
@@ -42,3 +43,6 @@ main = do
     get "/ingredients" $ handleGetIngredients db
     post "/ingredients" $ handleCreateIngredient db
     get "/ingredients/:ingredientId" $ handleGetIngredient db
+    get "/recipes" $ handleGetAllRecipes db
+    get "/recipes/:recipeID" $ handleGetRecipe db
+    post "/recipes" $ handleAddRecipe db
