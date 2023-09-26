@@ -12,7 +12,7 @@ import Data.Maybe
 import Data.Text hiding (map)
 import Database.SQLite.Simple
 import GHC.Generics (Generic)
-import Ingredients (createIngredientsTables, handleCreateIngredient, handleGetIngredient, handleGetIngredients)
+import Ingredients (createIngredientsTables, handleAddRecipeIngredient, handleCreateIngredient, handleGetIngredient, handleGetIngredients, handleGetRecipeIngredients)
 import Recipe (createRecipeTable, handleAddRecipe, handleGetAllRecipes, handleGetRecipe)
 import User (createUser, handleLogin, handleRegister)
 import Web.Scotty (get, post, scotty)
@@ -46,3 +46,5 @@ main = do
     get "/recipes" $ handleGetAllRecipes db
     get "/recipes/:recipeID" $ handleGetRecipe db
     post "/recipes" $ handleAddRecipe db
+    get "/recipes/:recipeId/ingredients" $ handleGetRecipeIngredients db
+    post "/recipes/:recipeId/ingredients" $ handleAddRecipeIngredient db
