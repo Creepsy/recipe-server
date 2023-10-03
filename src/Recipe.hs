@@ -102,7 +102,7 @@ handleGetAllRecipes db = liftIO (getAllRecipes db) >>= json
 
 handleGetRecipe :: Connection -> ActionM ()
 handleGetRecipe db = do
-  recipeID <- param "recipeID"
+  recipeID <- param "recipeId"
   recipeOcc <- liftIO $ getRecipe db recipeID
   case recipeOcc of
     None -> raiseStatus status404 "Unknown recipe."

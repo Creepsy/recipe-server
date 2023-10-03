@@ -44,7 +44,7 @@ main = do
     post "/ingredients" $ handleCreateIngredient db
     get "/ingredients/:ingredientId" $ handleGetIngredient db
     get "/recipes" $ handleGetAllRecipes db
-    get "/recipes/:recipeID" $ handleGetRecipe db
+    get "/recipes/:recipeId" $ handleGetRecipe db
     post "/recipes" $ handleAddRecipe db
     get "/recipes/:recipeId/ingredients" $ handleGetRecipeIngredients db
     post "/recipes/:recipeId/ingredients" $ handleAddRecipeIngredient db
