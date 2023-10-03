@@ -10,17 +10,18 @@ module Recipe
     handleGetAllRecipes,
     handleGetRecipe,
     handleAddRecipe,
+    handleDeleteRecipe,
   )
 where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Aeson (FromJSON, ToJSON (toJSON), object, (.=))
-import Database.SQLite.Simple (Connection, FromRow (fromRow), Only (Only), ToRow (toRow), execute, execute_, field, query, query_)
+import Database.SQLite.Simple (Connection, FromRow (fromRow), Only (Only), ToRow (toRow), changes, execute, execute_, field, query, query_)
 import Database.SQLite.Simple.ToField (ToField (toField))
 import GHC.Generics (Generic)
 import Network.HTTP.Types (status201, status404)
 import Util (Occurence (Many, None, One), occurences)
-import Web.Scotty (ActionM, json, jsonData, param, raiseStatus)
+import Web.Scotty (ActionM, html, json, jsonData, param, raise, raiseStatus)
 
 createRecipeTable :: Connection -> IO ()
 createRecipeTable db = do
@@ -114,6 +115,15 @@ handleAddRecipe db = do
   recipeToAdd <- jsonData :: ActionM Recipe
   liftIO $ addRecipe db recipeToAdd
   raiseStatus status201 "Recipe inserted into database!"
+
+handleDeleteRecipe :: Connection -> ActionM ()
+handleDeleteRecipe db = do
+  recipeId <- param "recipeId" :: ActionM Int
+  _ <- liftIO $ execute db "DELETE FROM recipes WHERE recipeId = ?;" (Only recipeId)
+  rowsDeleted <- liftIO $ changes db
+  case rowsDeleted of
+    1 -> html ""
+    _ -> raiseStatus status404 "No recipe with ID found"
 
 getAllRecipes :: Connection -> IO [RecipeWithID]
 getAllRecipes = flip query_ "SELECT * FROM recipes;"

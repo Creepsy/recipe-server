@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ImportQualifiedPost #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Main (main) where
 
@@ -13,9 +13,9 @@ import Data.Text hiding (map)
 import Database.SQLite.Simple
 import GHC.Generics (Generic)
 import Ingredients (createIngredientsTables, handleAddRecipeIngredient, handleCreateIngredient, handleGetIngredient, handleGetIngredients, handleGetRecipeIngredients)
-import Recipe (createRecipeTable, handleAddRecipe, handleGetAllRecipes, handleGetRecipe)
+import Recipe (createRecipeTable, handleAddRecipe, handleDeleteRecipe, handleGetAllRecipes, handleGetRecipe)
 import User (createUser, handleLogin, handleRegister)
-import Web.Scotty (get, post, scotty)
+import Web.Scotty (delete, get, post, scotty)
 
 createTables :: Connection -> IO ()
 createTables db = do
@@ -45,6 +45,7 @@ main = do
     get "/ingredients/:ingredientId" $ handleGetIngredient db
     get "/recipes" $ handleGetAllRecipes db
     get "/recipes/:recipeId" $ handleGetRecipe db
+    delete "/recipes/:recipeId" $ handleDeleteRecipe db
     post "/recipes" $ handleAddRecipe db
     get "/recipes/:recipeId/ingredients" $ handleGetRecipeIngredients db
     post "/recipes/:recipeId/ingredients" $ handleAddRecipeIngredient db
