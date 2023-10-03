@@ -21,7 +21,7 @@ import Database.SQLite.Simple.ToField (ToField (toField))
 import GHC.Generics (Generic)
 import Network.HTTP.Types (status201, status404)
 import Util (Occurence (Many, None, One), occurences)
-import Web.Scotty (ActionM, html, json, jsonData, param, raise, raiseStatus)
+import Web.Scotty (ActionM, html, json, jsonData, param, raiseStatus)
 
 createRecipeTable :: Connection -> IO ()
 createRecipeTable db = do
