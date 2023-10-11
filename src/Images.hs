@@ -20,9 +20,8 @@ import Database.SQLite.Simple (Connection, FromRow (fromRow), Only (Only), ToRow
 import Database.SQLite.Simple.ToField (ToField (toField))
 import Network.HTTP.Types (status400, status404)
 import Recipe (RecipeID)
+import System.FilePath ((<.>), (</>))
 import Text.Read (readMaybe)
-import System.FilePath ((</>), (<.>))
-import Util (Occurence (Many, None, One))
 import Web.Scotty (ActionM, addHeader, json, param, raiseStatus, raw)
 
 createImageTable :: Connection -> IO ()
@@ -66,8 +65,7 @@ imagePath imageFolder imageUUID = imageFolder </> show imageUUID <.> ".jpg"
 storeImageInDB :: Connection -> FilePath -> String -> DynamicImage -> RecipeID -> IO UUID
 storeImageInDB db imageFolder imageTitle image rId = do
   randomUUID <- nextRandom
-  let 
-      imageInfo = ImageInfo randomUUID imageTitle rId
+  let imageInfo = ImageInfo randomUUID imageTitle rId
   execute db "INSERT INTO images (uuid, title, recipeId) VALUES (?, ?, ?);" . toRow $ imageInfo
   storeImageOnDisk (imagePath imageFolder randomUUID) image
   return randomUUID

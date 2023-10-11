@@ -12,12 +12,11 @@ import Data.Maybe
 import Data.Text hiding (map)
 import Database.SQLite.Simple
 import GHC.Generics (Generic)
-import Images (createImageTable, handleGetAssociatedImageUUIDs, handleGetImage, storeImageInDB)
+import Images (createImageTable, handleGetAssociatedImageUUIDs, handleGetImage)
 import Ingredients (createIngredientsTables, handleAddRecipeIngredient, handleCreateIngredient, handleGetIngredient, handleGetIngredients, handleGetRecipeIngredients)
 import Recipe (createRecipeTable, handleAddRecipe, handleDeleteRecipe, handleGetAllRecipes, handleGetRecipe)
 import User (createUser, handleLogin, handleRegister)
 import Web.Scotty (delete, get, post, scotty)
-import Codec.Picture (generateImage, PixelRGB8 (PixelRGB8), DynamicImage (ImageRGB8))
 
 createTables :: Connection -> IO ()
 createTables db = do
