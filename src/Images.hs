@@ -3,7 +3,7 @@
 
 module Images
   ( createImageTable,
-    getImageFromDB,
+    getImageFromDisk,
     storeImageInDB,
     handleGetImage,
     handleGetAssociatedImageUUIDs,
@@ -21,7 +21,7 @@ import Database.SQLite.Simple.ToField (ToField (toField))
 import Network.HTTP.Types (status400, status404)
 import Recipe (RecipeID)
 import Text.Read (readMaybe)
-import Util (Occurence (Many, None, One), occurences)
+import Util (Occurence (Many, None, One))
 import Web.Scotty (ActionM, addHeader, json, param, raiseStatus, raw)
 
 createImageTable :: Connection -> IO ()
@@ -38,58 +38,56 @@ createImageTable db = do
     "CREATE TABLE IF NOT EXISTS images (\
     \ uuid VARCHAR(36) PRIMARY KEY NOT NULL,\
     \ title VARCHAR(40) NOT NULL,\
-    \ filePath VARCHAR(100) NOT NULL,\
     \ recipeId INTEGER,\
     \ FOREIGN KEY (recipeId) REFERENCES recipes(recipeId));"
 
 data ImageInfo = ImageInfo
   { uuid :: UUID,
     title :: String,
-    filePath :: FilePath,
     recipeId :: RecipeID
   }
 
 instance FromRow ImageInfo where
-  fromRow = ImageInfo <$> (read <$> field) <*> field <*> field <*> field
+  fromRow = ImageInfo <$> (read <$> field) <*> field <*> field
 
 instance ToRow ImageInfo where
-  toRow (ImageInfo imageUUID imageTitle fPath rId) = [toField . show $ imageUUID, toField imageTitle, toField fPath, toField rId]
+  toRow (ImageInfo imageUUID imageTitle rId) = [toField . show $ imageUUID, toField imageTitle, toField rId]
 
 imageFolder :: FilePath
 imageFolder = "images/"
 
-getImageFromDB :: Connection -> UUID -> IO (Occurence DynamicImage)
-getImageFromDB db imageUUID = occurences <$> (traverse readImageFromDisk =<< query db "SELECT * FROM images WHERE uuid = ?;" (Only . show $ imageUUID))
-  where
-    readImageFromDisk info = either error id <$> (readImage . filePath $ info)
+getImageFromDisk :: UUID -> IO (Maybe DynamicImage)
+getImageFromDisk imageUUID = either (const Nothing) Just <$> (readImage . imagePath $ imageUUID)
 
 storeImageOnDisk :: FilePath -> DynamicImage -> IO ()
 storeImageOnDisk fPath = BS.writeFile fPath . imageToJpg 50
 
+imagePath :: UUID -> FilePath
+imagePath imageUUID = imageFolder ++ show imageUUID ++ ".jpg"
+
 storeImageInDB :: Connection -> String -> DynamicImage -> RecipeID -> IO UUID
 storeImageInDB db imageTitle image rId = do
   randomUUID <- nextRandom
-  let fPath = imageFolder ++ show randomUUID ++ ".jpg"
-      imageInfo = ImageInfo randomUUID imageTitle fPath rId
-  execute db "INSERT INTO images (uuid, title, filePath, recipeId) VALUES (?, ?, ?, ?);" . toRow $ imageInfo
-  storeImageOnDisk fPath image
+  let 
+      imageInfo = ImageInfo randomUUID imageTitle rId
+  execute db "INSERT INTO images (uuid, title, recipeId) VALUES (?, ?, ?);" . toRow $ imageInfo
+  storeImageOnDisk (imagePath randomUUID) image
   return randomUUID
 
 getImageUUIDsForRecipe :: Connection -> RecipeID -> IO [UUID]
 getImageUUIDsForRecipe db rId = map uuid <$> query db "SELECT * FROM images WHERE recipeId = ?;" (Only rId)
 
-handleGetImage :: Connection -> ActionM ()
-handleGetImage db = do
+handleGetImage :: ActionM ()
+handleGetImage = do
   maybeImageUUID <- readMaybe <$> param "uuid" :: ActionM (Maybe UUID)
   imageUUID <- maybe (raiseStatus status400 "Invalid uuid.") return maybeImageUUID
-  imageOcc <- liftIO $ getImageFromDB db imageUUID
+  imageOcc <- liftIO $ getImageFromDisk imageUUID
   case imageOcc of
-    None -> raiseStatus status404 "Unknown image."
-    One image -> do
+    Nothing -> raiseStatus status404 "Unknown image."
+    Just image -> do
       addHeader "Content-Type" "image/jpeg"
       addHeader "Cache-Control" "public, max-age=15552000"
       raw . imageToJpg 50 $ image
-    Many -> error "Multiple images with the same UUID found"
 
 handleGetAssociatedImageUUIDs :: Connection -> ActionM ()
 handleGetAssociatedImageUUIDs db = do
