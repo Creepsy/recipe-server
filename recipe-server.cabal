@@ -24,6 +24,7 @@ source-repository head
 executable recipe-server
   main-is: Main.hs
   other-modules:
+      Images
       Ingredients
       Recipe
       User
@@ -33,7 +34,8 @@ executable recipe-server
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      aeson
+      JuicyPixels
+    , aeson
     , base >=4.7 && <5
     , bytestring
     , http-types

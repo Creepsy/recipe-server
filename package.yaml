@@ -29,6 +29,7 @@ dependencies:
 - bytestring
 - uuid
 - unix-time
+- JuicyPixels
 
 ghc-options:
 - -Wall
