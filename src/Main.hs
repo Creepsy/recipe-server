@@ -12,11 +12,12 @@ import Data.Maybe
 import Data.Text hiding (map)
 import Database.SQLite.Simple
 import GHC.Generics (Generic)
-import Images (createImageTable, handleGetAssociatedImageUUIDs, handleGetImage)
+import Images (createImageTable, handleGetAssociatedImageUUIDs, handleGetImage, storeImageInDB)
 import Ingredients (createIngredientsTables, handleAddRecipeIngredient, handleCreateIngredient, handleGetIngredient, handleGetIngredients, handleGetRecipeIngredients)
 import Recipe (createRecipeTable, handleAddRecipe, handleDeleteRecipe, handleGetAllRecipes, handleGetRecipe)
 import User (createUser, handleLogin, handleRegister)
 import Web.Scotty (delete, get, post, scotty)
+import Codec.Picture (generateImage, PixelRGB8 (PixelRGB8), DynamicImage (ImageRGB8))
 
 createTables :: Connection -> IO ()
 createTables db = do
@@ -38,7 +39,6 @@ main = do
   createTables db
   adminSuccess <- createUser db "admin" (adminPassword config)
   when adminSuccess $ putStrLn "Created user \"admin\""
-  -- _ <- liftIO $ storeImageInDB db "some_image" (ImageRGB8 $ generateImage (curry $ const (PixelRGB8 10 10 10)) 100 100) 1
   scotty (port config) $ do
     post "/register" $ handleRegister db
     post "/login" $ handleLogin db
@@ -52,4 +52,4 @@ main = do
     get "/recipes/:recipeId/ingredients" $ handleGetRecipeIngredients db
     post "/recipes/:recipeId/ingredients" $ handleAddRecipeIngredient db
     get "/recipes/:recipeId/images" $ handleGetAssociatedImageUUIDs db
-    get "/images/:uuid" $ handleGetImage db
+    get "/images/:uuid" handleGetImage
