@@ -4,26 +4,24 @@ module Images
   ( createImageTable,
     getImageFromDB,
     storeImageInDB,
-    getImageUUIDsForRecipe,
     handleGetImage,
-    handleGetAssociatedImageUUIDs
+    handleGetAssociatedImageUUIDs,
   )
 where
 
 import Codec.Picture (DynamicImage, readImage)
+import Codec.Picture.Saving (imageToJpg)
+import Control.Monad.IO.Class (MonadIO (liftIO))
+import Data.ByteString.Lazy qualified as BS (writeFile)
 import Data.UUID (UUID)
 import Data.UUID.V4 (nextRandom)
 import Database.SQLite.Simple (Connection, FromRow (fromRow), Only (Only), ToRow (toRow), execute, execute_, field, query)
 import Database.SQLite.Simple.ToField (ToField (toField))
+import Network.HTTP.Types (status400, status404)
 import Recipe (RecipeID)
-import Util (Occurence (One, Many, None), occurences)
-import Web.Scotty (ActionM, param, raiseStatus, setHeader, addHeader, raw, json)
-import Codec.Picture.Saving (imageToJpg)
-import qualified Data.ByteString.Lazy as BS (writeFile)
-import Control.Monad.IO.Class (MonadIO(liftIO))
-import Network.HTTP.Types (status404, status400)
 import Text.Read (readMaybe)
-import Data.Maybe (fromJust, fromMaybe)
+import Util (Occurence (Many, None, One), occurences)
+import Web.Scotty (ActionM, addHeader, json, param, raiseStatus, raw)
 
 createImageTable :: Connection -> IO ()
 createImageTable db = do
@@ -87,10 +85,10 @@ handleGetImage db = do
   case imageOcc of
     None -> raiseStatus status404 "Unknown image."
     One image -> do
-      addHeader "Content-Type" "image/jpeg" 
+      addHeader "Content-Type" "image/jpeg"
       addHeader "Cache-Control" "public, max-age=15552000"
       raw . imageToJpg 50 $ image
-    Many -> error "Multiple images with the same UUID found" 
+    Many -> error "Multiple images with the same UUID found"
 
 handleGetAssociatedImageUUIDs :: Connection -> ActionM ()
 handleGetAssociatedImageUUIDs db = do
