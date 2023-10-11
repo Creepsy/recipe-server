@@ -27,14 +27,14 @@ createTables db = do
   createRecipeTable db
   createImageTable db
 
-data ServerConfig = ServerConfig {port :: Int, adminPassword :: Text} deriving (Generic)
+data ServerConfig = ServerConfig {port :: Int, adminPassword :: Text, imageFolder :: String} deriving (Generic)
 
 instance FromJSON ServerConfig
 
 main :: IO ()
 main = do
   configBytes <- B.readFile "config.json"
-  let config = fromMaybe ServerConfig {port = 3000, adminPassword = "admin"} (decode configBytes)
+  let config = fromMaybe ServerConfig {port = 3000, adminPassword = "admin", imageFolder = "images"} (decode configBytes)
   db <- open "recipes.sqlite"
   createTables db
   adminSuccess <- createUser db "admin" (adminPassword config)
@@ -52,4 +52,4 @@ main = do
     get "/recipes/:recipeId/ingredients" $ handleGetRecipeIngredients db
     post "/recipes/:recipeId/ingredients" $ handleAddRecipeIngredient db
     get "/recipes/:recipeId/images" $ handleGetAssociatedImageUUIDs db
-    get "/images/:uuid" handleGetImage
+    get "/images/:uuid" $ handleGetImage (imageFolder config)

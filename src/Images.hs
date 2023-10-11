@@ -21,6 +21,7 @@ import Database.SQLite.Simple.ToField (ToField (toField))
 import Network.HTTP.Types (status400, status404)
 import Recipe (RecipeID)
 import Text.Read (readMaybe)
+import System.FilePath ((</>), (<.>))
 import Util (Occurence (Many, None, One))
 import Web.Scotty (ActionM, addHeader, json, param, raiseStatus, raw)
 
@@ -53,35 +54,32 @@ instance FromRow ImageInfo where
 instance ToRow ImageInfo where
   toRow (ImageInfo imageUUID imageTitle rId) = [toField . show $ imageUUID, toField imageTitle, toField rId]
 
-imageFolder :: FilePath
-imageFolder = "images/"
-
-getImageFromDisk :: UUID -> IO (Maybe DynamicImage)
-getImageFromDisk imageUUID = either (const Nothing) Just <$> (readImage . imagePath $ imageUUID)
+getImageFromDisk :: FilePath -> UUID -> IO (Maybe DynamicImage)
+getImageFromDisk imageFolder imageUUID = either (const Nothing) Just <$> (readImage . imagePath imageFolder $ imageUUID)
 
 storeImageOnDisk :: FilePath -> DynamicImage -> IO ()
 storeImageOnDisk fPath = BS.writeFile fPath . imageToJpg 50
 
-imagePath :: UUID -> FilePath
-imagePath imageUUID = imageFolder ++ show imageUUID ++ ".jpg"
+imagePath :: FilePath -> UUID -> FilePath
+imagePath imageFolder imageUUID = imageFolder </> show imageUUID <.> ".jpg"
 
-storeImageInDB :: Connection -> String -> DynamicImage -> RecipeID -> IO UUID
-storeImageInDB db imageTitle image rId = do
+storeImageInDB :: Connection -> FilePath -> String -> DynamicImage -> RecipeID -> IO UUID
+storeImageInDB db imageFolder imageTitle image rId = do
   randomUUID <- nextRandom
   let 
       imageInfo = ImageInfo randomUUID imageTitle rId
   execute db "INSERT INTO images (uuid, title, recipeId) VALUES (?, ?, ?);" . toRow $ imageInfo
-  storeImageOnDisk (imagePath randomUUID) image
+  storeImageOnDisk (imagePath imageFolder randomUUID) image
   return randomUUID
 
 getImageUUIDsForRecipe :: Connection -> RecipeID -> IO [UUID]
 getImageUUIDsForRecipe db rId = map uuid <$> query db "SELECT * FROM images WHERE recipeId = ?;" (Only rId)
 
-handleGetImage :: ActionM ()
-handleGetImage = do
+handleGetImage :: FilePath -> ActionM ()
+handleGetImage imageFolder = do
   maybeImageUUID <- readMaybe <$> param "uuid" :: ActionM (Maybe UUID)
   imageUUID <- maybe (raiseStatus status400 "Invalid uuid.") return maybeImageUUID
-  imageOcc <- liftIO $ getImageFromDisk imageUUID
+  imageOcc <- liftIO $ getImageFromDisk imageFolder imageUUID
   case imageOcc of
     Nothing -> raiseStatus status404 "Unknown image."
     Just image -> do

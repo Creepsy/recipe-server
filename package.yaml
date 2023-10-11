@@ -30,6 +30,7 @@ dependencies:
 - uuid
 - unix-time
 - JuicyPixels
+- filepath
 
 ghc-options:
 - -Wall
