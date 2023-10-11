@@ -1,3 +1,4 @@
+{-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Images
@@ -52,30 +53,30 @@ instance FromRow ImageInfo where
   fromRow = ImageInfo <$> (read <$> field) <*> field <*> field <*> field
 
 instance ToRow ImageInfo where
-  toRow (ImageInfo uuid title filePath recipeId) = [toField . show $ uuid, toField title, toField filePath, toField recipeId]
+  toRow (ImageInfo imageUUID imageTitle fPath rId) = [toField . show $ imageUUID, toField imageTitle, toField fPath, toField rId]
 
 imageFolder :: FilePath
 imageFolder = "images/"
 
 getImageFromDB :: Connection -> UUID -> IO (Occurence DynamicImage)
-getImageFromDB db uuid = occurences <$> (traverse readImageFromDisk =<< query db "SELECT * FROM images WHERE uuid = ?;" (Only . show $ uuid))
+getImageFromDB db imageUUID = occurences <$> (traverse readImageFromDisk =<< query db "SELECT * FROM images WHERE uuid = ?;" (Only . show $ imageUUID))
   where
     readImageFromDisk info = either error id <$> (readImage . filePath $ info)
 
 storeImageOnDisk :: FilePath -> DynamicImage -> IO ()
-storeImageOnDisk filePath = BS.writeFile filePath . imageToJpg 50
+storeImageOnDisk fPath = BS.writeFile fPath . imageToJpg 50
 
 storeImageInDB :: Connection -> String -> DynamicImage -> RecipeID -> IO UUID
-storeImageInDB db title image recipeId = do
+storeImageInDB db imageTitle image rId = do
   randomUUID <- nextRandom
-  let filePath = imageFolder ++ show randomUUID ++ ".jpg"
-      imageInfo = ImageInfo randomUUID title filePath recipeId
+  let fPath = imageFolder ++ show randomUUID ++ ".jpg"
+      imageInfo = ImageInfo randomUUID imageTitle fPath rId
   execute db "INSERT INTO images (uuid, title, filePath, recipeId) VALUES (?, ?, ?, ?);" . toRow $ imageInfo
-  storeImageOnDisk filePath image
+  storeImageOnDisk fPath image
   return randomUUID
 
 getImageUUIDsForRecipe :: Connection -> RecipeID -> IO [UUID]
-getImageUUIDsForRecipe db recipeId = map uuid <$> query db "SELECT * FROM images WHERE recipeId = ?;" (Only recipeId)
+getImageUUIDsForRecipe db rId = map uuid <$> query db "SELECT * FROM images WHERE recipeId = ?;" (Only rId)
 
 handleGetImage :: Connection -> ActionM ()
 handleGetImage db = do
@@ -92,6 +93,6 @@ handleGetImage db = do
 
 handleGetAssociatedImageUUIDs :: Connection -> ActionM ()
 handleGetAssociatedImageUUIDs db = do
-  recipeId <- param "recipeId" :: ActionM Int
-  imageUUIDs <- liftIO $ getImageUUIDsForRecipe db recipeId
+  rId <- param "recipeId" :: ActionM Int
+  imageUUIDs <- liftIO $ getImageUUIDsForRecipe db rId
   json imageUUIDs
