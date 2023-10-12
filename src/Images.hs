@@ -30,7 +30,6 @@ createImageTable db = do
     Image:
       uuid:     UUID of the image
       title:    Title of the image
-      filePath: Filepath to the image
       recipeID: ID of the associated recipe
   -}
   execute_
@@ -57,10 +56,12 @@ getImageFromDisk :: FilePath -> UUID -> IO (Maybe DynamicImage)
 getImageFromDisk imageFolder imageUUID = either (const Nothing) Just <$> (readImage . imagePath imageFolder $ imageUUID)
 
 storeImageOnDisk :: FilePath -> DynamicImage -> IO ()
-storeImageOnDisk fPath = BS.writeFile fPath . imageToJpg 50
+storeImageOnDisk fPath = BS.writeFile fPath . imageToJpg jpgQuality
+  where
+    jpgQuality = 80
 
 imagePath :: FilePath -> UUID -> FilePath
-imagePath imageFolder imageUUID = imageFolder </> show imageUUID <.> ".jpg"
+imagePath imageFolder imageUUID = imageFolder </> show imageUUID <.> "jpg"
 
 storeImageInDB :: Connection -> FilePath -> String -> DynamicImage -> RecipeID -> IO UUID
 storeImageInDB db imageFolder imageTitle image rId = do
