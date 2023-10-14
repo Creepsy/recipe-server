@@ -1,6 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE NoFieldSelectors #-}
 
 module User (handleRegister, handleLogin, createUser) where
 
@@ -35,13 +38,13 @@ data DbUser = DbUser {userId :: Int, username :: Text, passwordHash :: Text} der
 
 instance FromRow DbUser
 
-data RegisterRequest = RegisterRequest {registerUsername :: Text, registerPassword :: Text}
+data RegisterRequest = RegisterRequest {username :: Text, password :: Text}
 
 instance FromJSON RegisterRequest where
   parseJSON (Object o) = RegisterRequest <$> o .: "username" <*> o .: "password"
   parseJSON other = prependFailure "Parsing Register Request failed: " (typeMismatch "Object" other)
 
-data LoginRequest = LoginRequest {loginUsername :: Text, loginPassword :: Text}
+data LoginRequest = LoginRequest {username :: Text, password :: Text}
 
 instance FromJSON LoginRequest where
   parseJSON (Object o) = LoginRequest <$> o .: "username" <*> o .: "password"
@@ -94,21 +97,21 @@ handleRegister :: Connection -> ActionT Lazy.Text IO ()
 handleRegister db = do
   _session <- checkSession db
   requestData <- jsonData :: ActionM RegisterRequest
-  registerSuccess <- liftIO $ createUser db (registerUsername requestData) (registerPassword requestData)
+  registerSuccess <- liftIO $ createUser db requestData.username requestData.password
   if registerSuccess then raiseStatus status201 "Created" else raiseStatus status409 "Could not create"
 
 handleLogin :: Connection -> ActionT Lazy.Text IO ()
 handleLogin db = do
   creds <- jsonData :: ActionM LoginRequest
-  userOcc <- liftIO $ findUser db (loginUsername creds)
+  userOcc <- liftIO $ findUser db creds.username
   case userOcc of
     None -> raiseStatus status401 "Invalid Credentials"
     Many -> error "Found multiple Users with same Username. This can never happen"
     One user -> do
-      let check = checkPassword (mkPassword $ loginPassword creds) (PasswordHash $ passwordHash user)
+      let check = checkPassword (mkPassword creds.password) (PasswordHash user.passwordHash)
       if check == PasswordCheckSuccess
         then do
-          sessionToken <- liftIO $ createSession db (userId user)
+          sessionToken <- liftIO $ createSession db user.userId
           let headerValue = fromStrict $ pack $ "HSESSIONID=" ++ unpack sessionToken ++ "; HttpOnly"
           addHeader "Set-Cookie" headerValue
           html "Ok"
