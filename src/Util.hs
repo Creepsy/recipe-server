@@ -1,5 +1,7 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE NoFieldSelectors #-}
 
 module Util (Occurence (None, One, Many), occurences, maybeOccurs, getTimeSinceEpoch, extractCookie) where
 
@@ -22,16 +24,16 @@ maybeOccurs None = Nothing
 maybeOccurs Many = Nothing
 maybeOccurs (One v) = Just v
 
-data Cookie = Cookie {cookieName :: Text, cookieValue :: Text} deriving (Show)
+data Cookie = Cookie {name :: Text, cookieValue :: Text} deriving (Show)
 
 makeCookieFromList :: [Text] -> Cookie
 makeCookieFromList [a, b] = Cookie a b
 makeCookieFromList _ = error "Failure constructing cookie from key-value-pair"
 
 extractCookie :: Text -> Text -> Maybe Text
-extractCookie cookie cookies = do
+extractCookie cookieName cookies = do
   let cookieList = makeCookieFromList . Data.Text.splitOn "=" . Data.Text.strip <$> Data.Text.splitOn ";" cookies
-   in cookieValue <$> Data.List.find ((== cookie) . cookieName) cookieList
+   in (.cookieValue) <$> Data.List.find (\cookie -> cookie.name == cookieName) cookieList
 
 getTimeSinceEpoch :: IO Int64
 getTimeSinceEpoch = do

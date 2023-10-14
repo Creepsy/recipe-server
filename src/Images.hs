@@ -1,5 +1,7 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE NoFieldSelectors #-}
 
 module Images
   ( createImageTable,
@@ -72,7 +74,7 @@ storeImageInDB db imageFolder imageTitle image rId = do
   return randomUUID
 
 getImageUUIDsForRecipe :: Connection -> RecipeID -> IO [UUID]
-getImageUUIDsForRecipe db rId = map uuid <$> query db "SELECT * FROM images WHERE recipeId = ?;" (Only rId)
+getImageUUIDsForRecipe db rId = map (.uuid) <$> (query db "SELECT * FROM images WHERE recipeId = ?;" (Only rId) :: IO [ImageInfo])
 
 handleGetImage :: FilePath -> ActionM ()
 handleGetImage imageFolder = do

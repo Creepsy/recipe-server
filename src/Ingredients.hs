@@ -2,6 +2,8 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE NoFieldSelectors #-}
 
 module Ingredients (createIngredientsTables, handleGetIngredients, handleGetIngredient, handleCreateIngredient, handleGetRecipeIngredients, handleAddRecipeIngredient) where
 
@@ -138,9 +140,9 @@ handleAddRecipeIngredient :: Connection -> ActionT Lazy.Text IO ()
 handleAddRecipeIngredient db = do
   requestedId <- param "recipeId" :: ActionM Int
   requestData <- jsonData :: ActionM AddIngredientRequest
-  case nameToUnit . reqUnit $ requestData of
+  case nameToUnit . (.reqUnit) $ requestData of
     Just measUnit -> do
-      added <- liftIO $ addIngredientToRecipe db (reqIngredientTypeId requestData) requestedId $ IngredientQuantity measUnit (Just . reqAmount $ requestData)
+      added <- liftIO $ addIngredientToRecipe db requestData.reqIngredientTypeId requestedId $ IngredientQuantity measUnit (Just requestData.reqAmount)
       if added
         then raiseStatus status201 "Added ingredient to recipe"
         else raiseStatus status409 "Ingredient already exists in recipe"
@@ -168,5 +170,5 @@ instance FromJSON CreateIngredientRequest where
 handleCreateIngredient :: Connection -> ActionT Lazy.Text IO ()
 handleCreateIngredient db = do
   createRequest <- jsonData :: ActionM CreateIngredientRequest
-  liftIO $ createIngredientType db $ name createRequest
+  liftIO $ createIngredientType db createRequest.name
   raiseStatus status201 "Created ingredient type"

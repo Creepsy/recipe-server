@@ -1,6 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE NoFieldSelectors #-}
+
 
 module Main (main) where
 
@@ -36,9 +39,9 @@ main = do
   let config = fromMaybe ServerConfig {port = 3000, adminPassword = "admin", imageFolder = "images"} (decode configBytes)
   db <- open "recipes.sqlite"
   createTables db
-  adminSuccess <- createUser db "admin" (adminPassword config)
+  adminSuccess <- createUser db "admin" config.adminPassword
   when adminSuccess $ putStrLn "Created user \"admin\""
-  scotty (port config) $ do
+  scotty config.port $ do
     post "/register" $ handleRegister db
     post "/login" $ handleLogin db
     get "/ingredients" $ handleGetIngredients db
@@ -51,4 +54,4 @@ main = do
     get "/recipes/:recipeId/ingredients" $ handleGetRecipeIngredients db
     post "/recipes/:recipeId/ingredients" $ handleAddRecipeIngredient db
     get "/recipes/:recipeId/images" $ handleGetAssociatedImageUUIDs db
-    get "/images/:uuid" $ handleGetImage (imageFolder config)
+    get "/images/:uuid" $ handleGetImage config.imageFolder
