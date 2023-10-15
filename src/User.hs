@@ -9,7 +9,6 @@ module User (handleRegister, handleLogin, createUser) where
 
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Aeson
-import Data.Aeson.Types
 import Data.Int
 import Data.Maybe
 import Data.Password.Bcrypt
@@ -38,17 +37,13 @@ data DbUser = DbUser {userId :: Int, username :: Text, passwordHash :: Text} der
 
 instance FromRow DbUser
 
-data RegisterRequest = RegisterRequest {username :: Text, password :: Text}
+data RegisterRequest = RegisterRequest {username :: Text, password :: Text} deriving (Generic)
 
 instance FromJSON RegisterRequest where
-  parseJSON (Object o) = RegisterRequest <$> o .: "username" <*> o .: "password"
-  parseJSON other = prependFailure "Parsing Register Request failed: " (typeMismatch "Object" other)
 
-data LoginRequest = LoginRequest {username :: Text, password :: Text}
+data LoginRequest = LoginRequest {username :: Text, password :: Text} deriving (Generic)
 
 instance FromJSON LoginRequest where
-  parseJSON (Object o) = LoginRequest <$> o .: "username" <*> o .: "password"
-  parseJSON other = prependFailure "Parsing Credentials failed: " (typeMismatch "Object" other)
 
 findUser :: Connection -> Text -> IO (Occurence DbUser)
 findUser db name = do
