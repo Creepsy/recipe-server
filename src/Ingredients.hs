@@ -130,7 +130,7 @@ handleGetRecipeIngredients db = do
   ingredients <- liftIO $ getIngredientsOfRecipe db requestedId
   json ingredients
 
-data AddIngredientRequest = AddIngredientRequest {reqIngredientTypeId :: Int, reqUnit :: Text, reqAmount :: Int}
+data AddIngredientRequest = AddIngredientRequest {ingredientTypeId :: Int, unit :: Text, amount :: Int}
 
 instance FromJSON AddIngredientRequest where
   parseJSON (Object o) = AddIngredientRequest <$> o .: "ingredientTypeId" <*> o .: "measurementUnit" <*> o .: "ingredientAmount"
@@ -140,9 +140,9 @@ handleAddRecipeIngredient :: Connection -> ActionT Lazy.Text IO ()
 handleAddRecipeIngredient db = do
   requestedId <- param "recipeId" :: ActionM Int
   requestData <- jsonData :: ActionM AddIngredientRequest
-  case nameToUnit . (.reqUnit) $ requestData of
+  case nameToUnit . (.unit) $ requestData of
     Just measUnit -> do
-      added <- liftIO $ addIngredientToRecipe db requestData.reqIngredientTypeId requestedId $ IngredientQuantity measUnit (Just requestData.reqAmount)
+      added <- liftIO $ addIngredientToRecipe db requestData.ingredientTypeId requestedId $ IngredientQuantity measUnit (Just requestData.amount)
       if added
         then raiseStatus status201 "Added ingredient to recipe"
         else raiseStatus status409 "Ingredient already exists in recipe"
