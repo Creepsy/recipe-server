@@ -1,9 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoFieldSelectors #-}
-
 
 module Main (main) where
 
@@ -49,7 +48,7 @@ main = do
     get "/ingredients/:ingredientId" $ handleGetIngredient db
     get "/recipes" $ handleGetAllRecipes db
     get "/recipes/:recipeId" $ handleGetRecipe db
-    delete "/recipes/:recipeId" $ handleDeleteRecipe db
+    delete "/recipes/:recipeId" $ handleDeleteRecipe db config.imageFolder
     post "/recipes" $ handleAddRecipe db
     get "/recipes/:recipeId/ingredients" $ handleGetRecipeIngredients db
     post "/recipes/:recipeId/ingredients" $ handleAddRecipeIngredient db

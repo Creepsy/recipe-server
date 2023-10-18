@@ -1,8 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoFieldSelectors #-}
-
 
 module Recipe
   ( createRecipeTable,
@@ -17,12 +16,15 @@ module Recipe
   )
 where
 
+import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Aeson (FromJSON, ToJSON (toJSON), object, (.=))
 import Database.SQLite.Simple (Connection, FromRow (fromRow), Only (Only), ToRow (toRow), changes, execute, execute_, field, query, query_)
 import Database.SQLite.Simple.ToField (ToField (toField))
 import GHC.Generics (Generic)
+import Images (deleteImageFromDB, getImageUUIDsForRecipe)
 import Network.HTTP.Types (status201, status404)
+import TypeAliases (RecipeID)
 import Util (Occurence (Many, None, One), occurences)
 import Web.Scotty (ActionM, html, json, jsonData, param, raiseStatus)
 
@@ -82,8 +84,6 @@ instance ToRow Recipe where
       toField s
     ]
 
-type RecipeID = Int
-
 data RecipeWithID = RecipeWithID {recipeId :: Int, recipe :: Recipe}
 
 instance FromRow RecipeWithID where
@@ -119,9 +119,11 @@ handleAddRecipe db = do
   liftIO $ addRecipe db recipeToAdd
   raiseStatus status201 "Recipe inserted into database!"
 
-handleDeleteRecipe :: Connection -> ActionM ()
-handleDeleteRecipe db = do
-  recipeId <- param "recipeId" :: ActionM Int
+handleDeleteRecipe :: Connection -> FilePath -> ActionM ()
+handleDeleteRecipe db imageFolder = do
+  recipeId <- param "recipeId" :: ActionM RecipeID
+  associatedImages <- liftIO $ getImageUUIDsForRecipe db recipeId
+  liftIO $ forM_ associatedImages (deleteImageFromDB db imageFolder)
   _ <- liftIO $ execute db "DELETE FROM recipes WHERE recipeId = ?;" (Only recipeId)
   rowsDeleted <- liftIO $ changes db
   case rowsDeleted of

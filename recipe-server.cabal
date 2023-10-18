@@ -27,6 +27,7 @@ executable recipe-server
       Images
       Ingredients
       Recipe
+      TypeAliases
       User
       Util
       Paths_recipe_server
@@ -38,6 +39,7 @@ executable recipe-server
     , aeson
     , base >=4.7 && <5
     , bytestring
+    , directory
     , filepath
     , http-types
     , password
