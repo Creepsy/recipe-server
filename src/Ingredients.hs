@@ -1,11 +1,20 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
-module Ingredients (createIngredientsTables, handleGetIngredients, handleGetIngredient, handleCreateIngredient, handleGetRecipeIngredients, handleAddRecipeIngredient) where
+module Ingredients
+  ( createIngredientsTables,
+    handleGetIngredients,
+    handleGetIngredient,
+    handleCreateIngredient,
+    handleGetRecipeIngredients,
+    handleAddRecipeIngredient,
+    RecipeIngredient(..)
+  )
+where
 
 import Control.Exception (try)
 import Control.Monad.IO.Class (MonadIO (liftIO))
@@ -20,6 +29,7 @@ import Database.SQLite.Simple qualified as SQLite
 import Database.SQLite.Simple.ToField (ToField (toField))
 import GHC.Generics (Generic)
 import Network.HTTP.Types (status201, status400, status404, status409)
+import TypeAliases (Count, IngredientTypeID, RecipeID)
 import Util (maybeOccurs, occurences)
 import Web.Scotty
 import Web.Scotty.Internal.Types (ActionT)
@@ -45,13 +55,13 @@ instance ToField MeasurementUnit where
 
 data IngredientQuantity = IngredientQuantity
   { measurementUnit :: MeasurementUnit,
-    ingredientAmount :: Maybe Int
+    ingredientAmount :: Maybe Count
   }
   deriving (Generic)
 
 data RecipeIngredient = RecipeIngredient
-  { ingredientTypeId :: Int,
-    recipeId :: Int,
+  { ingredientTypeId :: IngredientTypeID,
+    recipeId :: RecipeID,
     quantity :: IngredientQuantity
   }
   deriving (Generic)
@@ -71,7 +81,7 @@ instance ToRow RecipeIngredient where
 instance FromRow RecipeIngredient where
   fromRow = RecipeIngredient <$> field <*> field <*> (IngredientQuantity . fromJust . nameToUnit <$> field <*> field)
 
-data IngredientType = IngredientType {typeId :: Int, ingredientName :: Text} deriving (Generic)
+data IngredientType = IngredientType {typeId :: IngredientTypeID, ingredientName :: Text} deriving (Generic)
 
 instance FromRow IngredientType
 
@@ -90,12 +100,12 @@ createIngredientType db newIngredientName = do
 getIngredientTypes :: Connection -> IO [IngredientType]
 getIngredientTypes db = query_ db "SELECT * FROM ingredientTypes;"
 
-getIngredientType :: Connection -> Int -> IO (Maybe IngredientType)
+getIngredientType :: Connection -> IngredientTypeID -> IO (Maybe IngredientType)
 getIngredientType db ingredTypeId = do
   row <- query db "SELECT * FROM ingredientTypes WHERE ingredientTypeId = ?;" (Only ingredTypeId)
   return $ maybeOccurs (occurences row)
 
-addIngredientToRecipe :: Connection -> Int -> Int -> IngredientQuantity -> IO Bool
+addIngredientToRecipe :: Connection -> IngredientTypeID -> RecipeID -> IngredientQuantity -> IO Bool
 addIngredientToRecipe db ingredTypeId targetRecipeId qty = do
   let recipeIngred = RecipeIngredient ingredTypeId targetRecipeId qty
   let insertOp = withTransaction db $ execute db "INSERT INTO recipeIngredients VALUES (?, ?, ?, ?);" recipeIngred
@@ -103,7 +113,7 @@ addIngredientToRecipe db ingredTypeId targetRecipeId qty = do
   return $ isRight result
 
 data NamedRecipeIngredient = NamedRecipeIngredient
-  { ingredientTypeId :: Int,
+  { ingredientTypeId :: IngredientTypeID,
     quantity :: IngredientQuantity,
     ingredientName :: Text
   }
@@ -121,16 +131,16 @@ instance ToJSON NamedRecipeIngredient where
         "ingredientAmount" .= amt
       ]
 
-getIngredientsOfRecipe :: Connection -> Int -> IO [NamedRecipeIngredient]
+getIngredientsOfRecipe :: Connection -> RecipeID -> IO [NamedRecipeIngredient]
 getIngredientsOfRecipe db targetRecipeId = query db "SELECT recipeIngredients.ingredientTypeId, ingredientUnit, ingredientAmount, ingredientName FROM recipeIngredients, ingredientTypes WHERE recipeId = ? AND recipeIngredients.ingredientTypeId = ingredientTypes.ingredientTypeId;" (Only targetRecipeId)
 
 handleGetRecipeIngredients :: Connection -> ActionT Lazy.Text IO ()
 handleGetRecipeIngredients db = do
-  requestedId <- param "recipeId" :: ActionM Int
+  requestedId <- param "recipeId" :: ActionM RecipeID
   ingredients <- liftIO $ getIngredientsOfRecipe db requestedId
   json ingredients
 
-data AddIngredientRequest = AddIngredientRequest {ingredientTypeId :: Int, unit :: Text, amount :: Int}
+data AddIngredientRequest = AddIngredientRequest {ingredientTypeId :: IngredientTypeID, unit :: Text, amount :: Count}
 
 instance FromJSON AddIngredientRequest where
   parseJSON (Object o) = AddIngredientRequest <$> o .: "ingredientTypeId" <*> o .: "measurementUnit" <*> o .: "ingredientAmount"
@@ -138,7 +148,7 @@ instance FromJSON AddIngredientRequest where
 
 handleAddRecipeIngredient :: Connection -> ActionT Lazy.Text IO ()
 handleAddRecipeIngredient db = do
-  requestedId <- param "recipeId" :: ActionM Int
+  requestedId <- param "recipeId" :: ActionM RecipeID
   requestData <- jsonData :: ActionM AddIngredientRequest
   case nameToUnit . (.unit) $ requestData of
     Just measUnit -> do
@@ -155,7 +165,7 @@ handleGetIngredients db = do
 
 handleGetIngredient :: Connection -> ActionT Lazy.Text IO ()
 handleGetIngredient db = do
-  requestedId <- param "ingredientId" :: ActionM Int
+  requestedId <- param "ingredientId" :: ActionM IngredientTypeID
   maybeIngredientType <- liftIO (getIngredientType db requestedId)
   case maybeIngredientType of
     Just ingredientType -> json ingredientType
