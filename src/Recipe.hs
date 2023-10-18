@@ -134,7 +134,7 @@ getAllRecipes :: Connection -> IO [RecipeWithID]
 getAllRecipes = flip query_ "SELECT * FROM recipes;"
 
 getRecipe :: Connection -> RecipeID -> IO (Occurence Recipe)
-getRecipe db recipeID = occurences . map (.recipe) <$> (query db "SELECT * FROM recipes WHERE id = ?;" (Only recipeID) :: IO [RecipeWithID])
+getRecipe db recipeID = occurences . map (.recipe) <$> (query db "SELECT * FROM recipes WHERE recipeId = ?;" (Only recipeID) :: IO [RecipeWithID])
 
 addRecipe :: Connection -> Recipe -> IO ()
 addRecipe db recipeToAdd = do
