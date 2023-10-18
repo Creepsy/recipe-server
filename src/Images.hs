@@ -1,13 +1,15 @@
 {-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
 module Images
   ( createImageTable,
     getImageFromDisk,
     storeImageInDB,
+    deleteImageFromDB,
     handleGetImage,
+    getImageUUIDsForRecipe,
     handleGetAssociatedImageUUIDs,
   )
 where
@@ -21,9 +23,10 @@ import Data.UUID.V4 (nextRandom)
 import Database.SQLite.Simple (Connection, FromRow (fromRow), Only (Only), ToRow (toRow), execute, execute_, field, query)
 import Database.SQLite.Simple.ToField (ToField (toField))
 import Network.HTTP.Types (status400, status404)
-import Recipe (RecipeID)
+import System.Directory (removeFile)
 import System.FilePath ((<.>), (</>))
 import Text.Read (readMaybe)
+import TypeAliases (RecipeID)
 import Web.Scotty (ActionM, addHeader, json, param, raiseStatus, raw)
 
 createImageTable :: Connection -> IO ()
@@ -72,6 +75,11 @@ storeImageInDB db imageFolder imageTitle image rId = do
   execute db "INSERT INTO images (uuid, title, recipeId) VALUES (?, ?, ?);" . toRow $ imageInfo
   storeImageOnDisk (imagePath imageFolder randomUUID) image
   return randomUUID
+
+deleteImageFromDB :: Connection -> FilePath -> UUID -> IO ()
+deleteImageFromDB db imageFolder imageUUID = do
+  execute db "DELETE FROM images WHERE uuid = ?" (Only . show $ imageUUID)
+  removeFile $ imagePath imageFolder imageUUID
 
 getImageUUIDsForRecipe :: Connection -> RecipeID -> IO [UUID]
 getImageUUIDsForRecipe db rId = map (.uuid) <$> (query db "SELECT * FROM images WHERE recipeId = ?;" (Only rId) :: IO [ImageInfo])
