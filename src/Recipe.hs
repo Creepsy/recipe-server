@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
 module Recipe
@@ -8,8 +10,7 @@ module Recipe
     Ingredient (..),
     Recipe (..),
     RecipeID,
-    RecipeWithID (..),
-    handleGetAllRecipes,
+    handleGetAllRecipePreviews,
     handleGetRecipe,
     handleAddRecipe,
     handleDeleteRecipe,
@@ -18,11 +19,12 @@ where
 
 import Control.Monad (forM_)
 import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.Aeson (FromJSON, ToJSON (toJSON), object, (.=))
-import Database.SQLite.Simple (Connection, FromRow (fromRow), Only (Only), ToRow (toRow), changes, execute, execute_, field, query, query_)
+import Data.Aeson (FromJSON, ToJSON)
+import Data.UUID (UUID, nil)
+import Database.SQLite.Simple (Connection, FromRow (fromRow), Only (Only), ToRow (toRow), changes, execute, execute_, field, query, query_, (:.) ((:.)))
 import Database.SQLite.Simple.ToField (ToField (toField))
 import GHC.Generics (Generic)
-import Images (deleteImageFromDB, getImageUUIDsForRecipe)
+import Images (deleteImageFromDB, getAssociatedImageUUIDs)
 import Network.HTTP.Types (status201, status404)
 import TypeAliases (RecipeID)
 import Util (Occurence (Many, None, One), occurences)
@@ -84,34 +86,31 @@ instance ToRow Recipe where
       toField s
     ]
 
-data RecipeWithID = RecipeWithID {recipeId :: Int, recipe :: Recipe}
+data RecipePreview = RecipePreview
+  { recipeId :: RecipeID,
+    title :: String,
+    titleImage :: UUID,
+    timeMinutes :: Int,
+    costCents :: Int,
+    stars :: Int
+  }
+  deriving (Generic)
 
-instance FromRow RecipeWithID where
-  fromRow = RecipeWithID <$> field <*> fromRow
+instance ToJSON RecipePreview
 
-instance ToJSON RecipeWithID where
-  toJSON (RecipeWithID rID (Recipe t d i tM cC s)) =
-    object
-      [ "id" .= rID,
-        "title" .= t,
-        "description" .= d,
-        "ingredients" .= i,
-        "timeMinutes" .= tM,
-        "costCents" .= cC,
-        "stars" .= s
-      ]
+handleGetAllRecipePreviews :: Connection -> ActionM ()
+handleGetAllRecipePreviews db = liftIO (getAllRecipePreviews db) >>= json
 
-handleGetAllRecipes :: Connection -> ActionM ()
-handleGetAllRecipes db = liftIO (getAllRecipes db) >>= json
+getAllRecipePreviews :: Connection -> IO [RecipePreview]
+getAllRecipePreviews db = getAllRecipes db >>= mapM (recipeToPreview db)
 
-handleGetRecipe :: Connection -> ActionM ()
-handleGetRecipe db = do
-  recipeID <- param "recipeId"
-  recipeOcc <- liftIO $ getRecipe db recipeID
-  case recipeOcc of
-    None -> raiseStatus status404 "Unknown recipe."
-    One recipeToGet -> json recipeToGet
-    Many -> error "Found multiple recipes with same id. This can never happen."
+recipeToPreview :: Connection -> (RecipeID, Recipe) -> IO RecipePreview
+recipeToPreview db (recipeId, recipe) = do
+  associatedImages <- getAssociatedImageUUIDs db recipeId
+  let titleImage = case associatedImages of
+        (tI : _) -> tI
+        _ -> nil
+  return $ RecipePreview recipeId recipe.title titleImage recipe.timeMinutes recipe.costCents recipe.stars
 
 handleAddRecipe :: Connection -> ActionM ()
 handleAddRecipe db = do
@@ -122,7 +121,7 @@ handleAddRecipe db = do
 handleDeleteRecipe :: Connection -> FilePath -> ActionM ()
 handleDeleteRecipe db imageFolder = do
   recipeId <- param "recipeId" :: ActionM RecipeID
-  associatedImages <- liftIO $ getImageUUIDsForRecipe db recipeId
+  associatedImages <- liftIO $ getAssociatedImageUUIDs db recipeId
   liftIO $ forM_ associatedImages (deleteImageFromDB db imageFolder)
   _ <- liftIO $ execute db "DELETE FROM recipes WHERE recipeId = ?;" (Only recipeId)
   rowsDeleted <- liftIO $ changes db
@@ -130,11 +129,44 @@ handleDeleteRecipe db imageFolder = do
     1 -> html ""
     _ -> raiseStatus status404 "No recipe with ID found"
 
-getAllRecipes :: Connection -> IO [RecipeWithID]
-getAllRecipes = flip query_ "SELECT * FROM recipes;"
+getAllRecipes :: Connection -> IO [(RecipeID, Recipe)]
+getAllRecipes db = map convertToTuple <$> (query_ db "SELECT * FROM recipes;" :: IO [Only RecipeID :. Recipe])
+  where
+    convertToTuple (Only recipeId :. recipe) = (recipeId, recipe)
+
+data RecipeWithAssociations = RecipeWithAssociations
+  { recipeId :: RecipeID,
+    title :: String,
+    images :: [UUID],
+    timeMinutes :: Int,
+    costCents :: Int,
+    stars :: Int
+  }
+  deriving (Generic)
+
+instance ToJSON RecipeWithAssociations
+
+handleGetRecipe :: Connection -> ActionM ()
+handleGetRecipe db = do
+  recipeID <- param "recipeId"
+  recipeOcc <- liftIO $ getRecipeWithAssociations db recipeID
+  case recipeOcc of
+    None -> raiseStatus status404 "Unknown recipe."
+    One recipeToGet -> json recipeToGet
+    Many -> error "Found multiple recipes with same id. This can never happen."
+
+getRecipeWithAssociations :: Connection -> RecipeID -> IO (Occurence RecipeWithAssociations)
+getRecipeWithAssociations db recipeId = getRecipe db recipeId >>= traverse addAssociationsToRecipe
+  where
+    addAssociationsToRecipe :: Recipe -> IO RecipeWithAssociations
+    addAssociationsToRecipe recipe = do
+      associatedImages <- getAssociatedImageUUIDs db recipeId
+      return $ RecipeWithAssociations recipeId recipe.title associatedImages recipe.timeMinutes recipe.costCents recipe.stars
 
 getRecipe :: Connection -> RecipeID -> IO (Occurence Recipe)
-getRecipe db recipeID = occurences . map (.recipe) <$> (query db "SELECT * FROM recipes WHERE recipeId = ?;" (Only recipeID) :: IO [RecipeWithID])
+getRecipe db recipeID =
+  occurences . map (\(Only _ :. recipe) -> recipe)
+    <$> (query db "SELECT * FROM recipes WHERE recipeId = ?;" (Only recipeID) :: IO [Only RecipeID :. Recipe])
 
 addRecipe :: Connection -> Recipe -> IO ()
 addRecipe db recipeToAdd = do

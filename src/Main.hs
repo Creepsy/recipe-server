@@ -16,7 +16,7 @@ import Database.SQLite.Simple
 import GHC.Generics (Generic)
 import Images (createImageTable, handleGetAssociatedImageUUIDs, handleGetImage)
 import Ingredients (createIngredientsTables, handleAddRecipeIngredient, handleCreateIngredient, handleGetIngredient, handleGetIngredients, handleGetRecipeIngredients)
-import Recipe (createRecipeTable, handleAddRecipe, handleDeleteRecipe, handleGetAllRecipes, handleGetRecipe)
+import Recipe (createRecipeTable, handleAddRecipe, handleDeleteRecipe, handleGetAllRecipePreviews, handleGetRecipe)
 import User (createUser, handleLogin, handleRegister)
 import Web.Scotty (delete, get, post, scotty)
 
@@ -46,7 +46,7 @@ main = do
     get "/ingredients" $ handleGetIngredients db
     post "/ingredients" $ handleCreateIngredient db
     get "/ingredients/:ingredientId" $ handleGetIngredient db
-    get "/recipes" $ handleGetAllRecipes db
+    get "/recipes" $ handleGetAllRecipePreviews db
     get "/recipes/:recipeId" $ handleGetRecipe db
     delete "/recipes/:recipeId" $ handleDeleteRecipe db config.imageFolder
     post "/recipes" $ handleAddRecipe db

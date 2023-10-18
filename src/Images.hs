@@ -9,7 +9,7 @@ module Images
     storeImageInDB,
     deleteImageFromDB,
     handleGetImage,
-    getImageUUIDsForRecipe,
+    getAssociatedImageUUIDs,
     handleGetAssociatedImageUUIDs,
   )
 where
@@ -81,8 +81,8 @@ deleteImageFromDB db imageFolder imageUUID = do
   execute db "DELETE FROM images WHERE uuid = ?" (Only . show $ imageUUID)
   removeFile $ imagePath imageFolder imageUUID
 
-getImageUUIDsForRecipe :: Connection -> RecipeID -> IO [UUID]
-getImageUUIDsForRecipe db rId = map (.uuid) <$> (query db "SELECT * FROM images WHERE recipeId = ?;" (Only rId) :: IO [ImageInfo])
+getAssociatedImageUUIDs :: Connection -> RecipeID -> IO [UUID]
+getAssociatedImageUUIDs db rId = map (.uuid) <$> (query db "SELECT * FROM images WHERE recipeId = ?;" (Only rId) :: IO [ImageInfo])
 
 handleGetImage :: FilePath -> ActionM ()
 handleGetImage imageFolder = do
@@ -99,5 +99,5 @@ handleGetImage imageFolder = do
 handleGetAssociatedImageUUIDs :: Connection -> ActionM ()
 handleGetAssociatedImageUUIDs db = do
   rId <- param "recipeId" :: ActionM Int
-  imageUUIDs <- liftIO $ getImageUUIDsForRecipe db rId
+  imageUUIDs <- liftIO $ getAssociatedImageUUIDs db rId
   json imageUUIDs

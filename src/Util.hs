@@ -1,6 +1,6 @@
 {-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NoFieldSelectors #-}
 
 module Util (Occurence (None, One, Many), occurences, maybeOccurs, getTimeSinceEpoch, extractCookie) where
@@ -13,6 +13,21 @@ import Data.UnixTime
 import Foreign.C (CTime (CTime))
 
 data Occurence a = None | One a | Many
+
+instance Functor Occurence where
+  fmap f (One val) = One $ f val
+  fmap _ None = None
+  fmap _ Many = Many
+
+instance Foldable Occurence where
+  foldMap f occ = case f <$> occ of
+    (One val) -> val
+    _ -> mempty
+
+instance Traversable Occurence where
+  traverse f (One val) = One <$> f val
+  traverse _ None = pure None
+  traverse _ Many = pure Many
 
 occurences :: [a] -> Occurence a
 occurences [] = None

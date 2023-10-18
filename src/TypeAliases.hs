@@ -1,3 +1,6 @@
-module TypeAliases (RecipeID) where
+module TypeAliases
+  ( RecipeID,
+  )
+where
 
 type RecipeID = Int
